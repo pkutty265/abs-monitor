@@ -1,0 +1,63 @@
+# abs-monitor
+
+Consumer ABS surveillance pipeline: pull servicer reports from EDGAR (and, later,
+issuer websites), normalize key performance fields into a single long-format
+dataset, and build monitoring/analytics on top.
+
+## Proposed repo structure
+
+```
+abs-monitor/
+├── README.md
+├── pyproject.toml
+├── config/
+│   └── trusts.yaml            # trust universe: CIK, issuer/shelf, asset class, parser key
+├── src/absmon/
+│   ├── __init__.py
+│   ├── settings.py            # user-agent, paths, rate limits (env-driven)
+│   ├── edgar/
+│   │   ├── client.py          # rate-limited SEC HTTP session w/ disk cache
+│   │   ├── submissions.py     # list filings by CIK (submissions API, paginated)
+│   │   ├── filing_index.py    # resolve exhibits inside an accession folder
+│   │   └── fts.py             # full-text-search helper to resolve trust name -> CIK
+│   ├── parsers/
+│   │   ├── base.py            # text extraction (HTML/PDF), number parsing, label-map parser
+│   │   ├── registry.py        # parser_key -> parser class
+│   │   ├── ford_auto.py       # issuer-specific label maps
+│   │   ├── carmax_auto.py
+│   │   ├── santander_drive.py
+│   │   └── navient_ffelp.py
+│   ├── schema.py              # canonical field list + dtypes
+│   └── pipeline.py            # ingest(trusts, months) -> DataFrame (+parse coverage report)
+├── scripts/
+│   └── ingest_10d.py          # CLI entry: python scripts/ingest_10d.py --months 24
+├── tests/
+│   ├── fixtures/              # one saved exhibit per issuer (commit these!)
+│   └── test_parsers.py
+└── data/                      # gitignored
+    ├── raw/                   # cached filings/exhibits (edgar/{cik}/{accession}/...)
+    └── parsed/                # parquet outputs
+```
+
+Phase roadmap (proposed, revise as needed):
+- **Phase 1 (this):** EDGAR 10-D ingestion, 5 trusts, label-map parsers, one DataFrame.
+- **Phase 1b:** Issuer-website adapter (Sallie Mae SMB private SL PDFs, Navient refi)
+  since private student loan ABS is 144A and does not file 10-Ds.
+- **Phase 1c:** Reg AB II asset-level data (Form ABS-EE, EX-102 XML) for auto trusts —
+  fully structured, no label-guessing, enables loan-level roll rates.
+- **Phase 2:** Normalization/QA (cross-checks, restatement handling), storage (parquet/duckdb).
+- **Phase 3:** Analytics — CNL curves vs. vintage, delinquency roll rates, trigger proximity.
+- **Phase 4:** Alerts / dashboard.
+
+## Quickstart
+
+```bash
+pip install -e .
+export SEC_USER_AGENT="Your Name your@email.com"   # SEC requires a real contact UA
+python scripts/ingest_10d.py --months 24 --out data/parsed/servicer_reports.parquet
+```
+
+The first run prints a **parse-coverage report** (which canonical fields matched for
+each trust). Expect gaps on the first pass: the label maps in `src/absmon/parsers/*.py`
+are best-effort and must be tuned against the actual exhibit text, which is saved under
+`data/raw/` for exactly this purpose.

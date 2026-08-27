@@ -1,0 +1,35 @@
+# Trust universe for Phase 1.
+# cik: verified on EDGAR (Aug 2026) where given; null => resolve via full-text search at runtime.
+# parser: key into absmon.parsers.registry
+# NOTE: private student loan ABS (SMB Private Education Loan Trust, Navient Refi) are 144A and
+# do NOT file 10-D. The two student-loan trusts below are Navient FFELP shelves, which do.
+trusts:
+  - name: "Ford Credit Auto Owner Trust 2024-D"
+    cik: 2042453
+    issuer: "Ford Credit"
+    asset_class: "auto_prime"
+    parser: "ford_auto"
+
+  - name: "CarMax Auto Owner Trust 2024-1"
+    cik: 2003263
+    issuer: "CarMax"
+    asset_class: "auto_prime"
+    parser: "carmax_auto"
+
+  - name: "Santander Drive Auto Receivables Trust 2024-1"
+    cik: null
+    issuer: "Santander Consumer"
+    asset_class: "auto_subprime"
+    parser: "santander_drive"
+
+  - name: "Navient Student Loan Trust 2014-5"
+    cik: 1613765
+    issuer: "Navient"
+    asset_class: "student_ffelp"
+    parser: "navient_ffelp"
+
+  - name: "Navient Student Loan Trust 2015-3"
+    cik: 1641623
+    issuer: "Navient"
+    asset_class: "student_ffelp"
+    parser: "navient_ffelp"

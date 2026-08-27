@@ -62,7 +62,38 @@ def test_ford_synthetic():
     assert not res.missing, res.missing
 
 
+def test_carmax_real_exhibit():
+    """CarMax AOT 2024-1, June 2025 distribution (accession 0002003263-25-000032)."""
+    raw = (Path(__file__).parent / "fixtures" / "a2024-1ex991061625.htm").read_bytes()
+    res = get_parser("carmax_auto").parse(html_to_lines(raw))
+    v = res.values
+    assert v["pool_balance_begin"] == 895_851_061.26
+    assert v["pool_balance_end"] == 861_024_024.69
+    assert v["pool_factor"] == 0.5453984  # aggregate Note Pool Factor, end of period
+    assert v["receivables_count_end"] == 51_124
+    assert v["collections_total"] == 41_733_403.22
+    assert v["collections_principal"] == 33_366_523.51
+    assert v["collections_interest"] == 8_366_879.71  # "Available Finance Charge Collections"
+    assert v["collections_principal"] + v["collections_interest"] == v["collections_total"]
+    assert v["gross_losses_period"] == 2_414_468.18  # dollar column, not the 121 loan count
+    assert v["recoveries_period"] == 955_487.75
+    assert v["net_losses_period"] == 1_458_980.43  # not the "(Ln 76 - Ln 77)" references
+    assert v["cum_net_losses"] == 22_857_349.22
+    assert abs(v["cum_net_loss_ratio"] - 0.014599) < 1e-9
+    assert v["delinq_31_60"] == 26_821_453.72
+    assert v["delinq_61_90"] == 12_244_951.03
+    assert v["delinq_91_plus"] == 3_440_809.32  # 91-120 bucket; 121+ is charged off (zero)
+    assert abs(v["delinq_total_ratio"] - 0.049368) < 1e-9
+    assert v["reserve_account_balance"] == 3_914_142.67  # reconciliation Ending Balance
+    assert v["note_balance_total"] == 845_367_454.01  # end-of-period "Note Balance (sum a - h)"
+    assert v["servicing_fee"] == 746_542.55  # Monthly Servicing Fee dollar amount, not 0.15%
+    assert v["collection_period_end"] == "05/31/25"
+    assert v["distribution_date"] == "6/16/2025"
+    assert not res.missing, res.missing
+
+
 if __name__ == "__main__":
     test_parse_number()
     test_ford_synthetic()
+    test_carmax_real_exhibit()
     print("tests passed")

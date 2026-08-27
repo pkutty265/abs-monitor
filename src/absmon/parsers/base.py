@@ -97,9 +97,20 @@ def parse_number(tok: str, kind: str = "money") -> float | None:
 
 
 def numbers_in(line: str) -> list[str]:
-    toks = [m.group(0) for m in NUM_RE.finditer(line)]
-    # Drop bare footnote markers / column indices like "(1)" and lone years-ish ints inside labels.
-    return [t for t in toks if re.search(r"\d", t) and not re.fullmatch(r"\(\d\)", t.strip())]
+    toks = []
+    for m in NUM_RE.finditer(line):
+        t = m.group(0)
+        # Drop bare footnote markers / column indices like "(1)" and lone years-ish ints inside labels.
+        if not re.search(r"\d", t) or re.fullmatch(r"\(\d\)", t.strip()):
+            continue
+        # Drop cross-references to other line items, not values: "(Ln 76 - Ln 77)", "(Ln1 - Ln2)".
+        if re.search(r"\b(?:ln|line)\s*$", line[: m.start()], re.I):
+            continue
+        # Same for lettered item references like "(17d + 18d)" or "(Ln 74e / Ln 5)".
+        if m.end() < len(line) and line[m.end()].isalpha():
+            continue
+        toks.append(t)
+    return toks
 
 
 # ---------- label-map parser ----------

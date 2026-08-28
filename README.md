@@ -8,8 +8,9 @@ dataset, and build monitoring/analytics on top.
 
 I originally wanted private student loan ABS (SMB Private Education Loan Trust, Navient
 refi) in the universe, but those deals are 144A and file no 10-Ds on EDGAR. The two
-student loan slots are therefore Navient FFELP shelves, which do file; private SL will
-come later via a Sallie Mae investor-site adapter (Phase 1b).
+student loan slots are therefore Navient FFELP shelves, which do file. The private SL
+gap stays open; the next data push is loan-level ABS-EE (EX-102) ingestion for the
+auto trusts instead.
 
 On all five trusts, the untuned label-map parsers produced plausible-but-wrong values
 rather than blanks: line-reference numbers parsed as values (CarMax's "Ln 76" style,
@@ -69,10 +70,10 @@ abs-monitor/
 
 Phase roadmap (proposed, revise as needed):
 - **Phase 1 (this):** EDGAR 10-D ingestion, 5 trusts, label-map parsers, one DataFrame.
-- **Phase 1b:** Issuer-website adapter (Sallie Mae SMB private SL PDFs, Navient refi)
-  since private student loan ABS is 144A and does not file 10-Ds.
-- **Phase 1c:** Reg AB II asset-level data (Form ABS-EE, EX-102 XML) for auto trusts —
-  fully structured, no label-guessing, enables loan-level roll rates.
+- **Phase 1b:** Reg AB II asset-level data (Form ABS-EE, EX-102 XML) for the auto
+  trusts — fully structured, no label-guessing, enables loan-level roll rates
+  (`scripts/ingest_absee.py`, one parquet per filing under `data/parsed/absee/`).
+- **Deferred:** issuer-website adapter for private student loan ABS (144A, no 10-Ds).
 - **Phase 2:** Normalization/QA (cross-checks, restatement handling), storage (parquet/duckdb).
 - **Phase 3:** Analytics — CNL curves vs. vintage, delinquency roll rates, trigger proximity.
 - **Phase 4:** Alerts / dashboard.

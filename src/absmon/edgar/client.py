@@ -30,7 +30,7 @@ class EdgarClient:
             time.sleep(wait)
         self._last_request = time.monotonic()
 
-    def get_bytes(self, url: str, cache_path: Optional[Path] = None, retries: int = 3) -> bytes:
+    def get_bytes(self, url: str, cache_path: Optional[Path] = None, retries: int = 6) -> bytes:
         """GET with disk cache. cache_path is relative to cache_dir; defaults to a url hash."""
         if cache_path is None:
             cache_path = Path("_urlcache") / (hashlib.sha1(url.encode()).hexdigest() + ".bin")

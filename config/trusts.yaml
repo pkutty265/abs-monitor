@@ -17,7 +17,7 @@ trusts:
     parser: "carmax_auto"
 
   - name: "Santander Drive Auto Receivables Trust 2024-1"
-    cik: null
+    cik: 2004812  # verified via data.sec.gov/submissions (Aug 2026); FTS also resolves to this
     issuer: "Santander Consumer"
     asset_class: "auto_subprime"
     parser: "santander_drive"

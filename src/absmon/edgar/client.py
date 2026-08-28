@@ -40,7 +40,15 @@ class EdgarClient:
 
         for attempt in range(retries):
             self._throttle()
-            resp = self.session.get(url, timeout=60)
+            try:
+                resp = self.session.get(url, timeout=60)
+            except requests.RequestException as exc:
+                if attempt == retries - 1:
+                    raise
+                backoff = 2 ** attempt
+                log.warning("%s on %s; sleeping %ss", type(exc).__name__, url, backoff)
+                time.sleep(backoff)
+                continue
             if resp.status_code == 200:
                 full.parent.mkdir(parents=True, exist_ok=True)
                 full.write_bytes(resp.content)

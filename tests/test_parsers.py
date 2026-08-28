@@ -76,8 +76,40 @@ def test_carmax_real_exhibit():
     assert not res.missing, res.missing
 
 
+def test_santander_real_exhibit():
+    """Santander Drive ART 2024-1, March 2026 collection period (accession 0001193125-26-155322)."""
+    raw = (Path(__file__).parent / "fixtures" / "d121531dex991.htm").read_bytes()
+    res = get_parser("santander_drive").parse(html_to_lines(raw))
+    v = res.values
+    assert v["pool_balance_begin"] == 609_374_063.72
+    assert v["pool_balance_end"] == 581_592_835.05
+    assert v["pool_factor"] == 0.361318  # the {9} value, not the {8} cross-reference marker
+    assert v["receivables_count_end"] == 29_686  # Current column, not Original/Previous
+    assert v["collections_total"] == 33_325_729.60  # Total Available Funds
+    assert v["collections_principal"] == 20_163_665.39
+    assert v["collections_interest"] == 8_676_701.29
+    assert v["gross_losses_period"] == 7_569_812.94  # dollar column, not the 416 unit count
+    assert v["recoveries_period"] == 4_462_837.51  # Liquidation Proceeds, not the 2,921 units
+    # net = defaulted (7,569,812.94) + cram downs (47,750.34) - liquidation proceeds (4,462,837.51)
+    assert v["net_losses_period"] == 3_154_725.77
+    assert v["cum_net_losses"] == 143_792_282.72  # end of period, not beginning 140,637,556.95
+    assert abs(v["cum_net_loss_ratio"] - 0.0893) < 1e-9
+    assert v["delinq_31_60"] == 65_935_356.77  # dollars, not the 3,076 units or 11.34%
+    assert v["delinq_61_90"] == 36_964_894.43
+    assert v["delinq_91_plus"] == 11_167_250.26  # 91-120 bucket; 121+ is charged off (zero)
+    assert abs(v["delinq_31_60"] + v["delinq_61_90"] + v["delinq_91_plus"] - 114_067_501.46) < 0.01  # Total row
+    assert abs(v["delinq_total_ratio"] - 0.1961) < 1e-9
+    assert v["reserve_account_balance"] == 16_096_435.28
+    assert v["note_balance_total"] == 460_997_853.56  # section V total, not a per-class figure
+    assert v["servicing_fee"] == 1_523_435.16  # Total from the split-line Servicing Fee table
+    assert v["collection_period_end"] == "03/31/2026"
+    assert v["distribution_date"] == "04/15/2026"  # Payment Date, not Previous Payment Date 03/16
+    assert not res.missing, res.missing
+
+
 if __name__ == "__main__":
     test_parse_number()
     test_ford_real_exhibit()
     test_carmax_real_exhibit()
+    test_santander_real_exhibit()
     print("tests passed")

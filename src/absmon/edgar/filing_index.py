@@ -33,11 +33,15 @@ def list_documents(client: EdgarClient, cik: int, accession: str) -> pd.DataFram
             m = re.search(r"doc=(/Archives/[^&]+)", href)
             if m:
                 href = m.group(1)
+            filename = href.rsplit("/", 1)[-1]
+            # Multi-filer submissions (trust + depositor) embed the *depositor's* CIK in the
+            # index page hrefs, and those paths can 404; the same file always resolves under
+            # the CIK we queried, so rebuild the URL from it instead of trusting the href.
             rows.append({
                 "seq": tds[0].get_text(strip=True),
                 "description": tds[1].get_text(" ", strip=True),
-                "filename": href.rsplit("/", 1)[-1],
-                "url": "https://www.sec.gov" + href if href.startswith("/") else href,
+                "filename": filename,
+                "url": ARCHIVE.format(cik=cik, acc_nodash=acc_nd) + filename,
                 "type": tds[3].get_text(strip=True).upper(),
                 "size": tds[4].get_text(strip=True),
             })

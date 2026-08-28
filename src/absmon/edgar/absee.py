@@ -30,6 +30,7 @@ from .filing_index import list_documents, fetch_document
 FIELD_MAP = {
     "assetNumber": "asset_id",
     "reportingPeriodEndingDate": "period_end",
+    "originationDate": "origination_date",          # MM/YYYY -> first of month
     "reportingPeriodBeginningLoanBalanceAmount": "balance_begin",
     "reportingPeriodActualEndBalanceAmount": "balance_end",
     "originalLoanAmount": "original_balance",
@@ -38,6 +39,7 @@ FIELD_MAP = {
     "remainingTermToMaturityNumber": "remaining_term",
     "currentDelinquencyStatus": "delinq_days",
     "zeroBalanceCode": "zero_balance_code",
+    "zeroBalanceEffectiveDate": "zero_balance_date",  # MM/YYYY -> first of month
     "chargedoffPrincipalAmount": "chargeoff_amount",
     "recoveredAmount": "recovery_amount",
     "reportingPeriodModificationIndicator": "modified",
@@ -83,6 +85,8 @@ def parse_ex102(source: Path | str | bytes) -> pd.DataFrame:
 
     df = pd.DataFrame(rows, columns=list(FIELD_MAP.values()))
     df["period_end"] = pd.to_datetime(df["period_end"], format="%m-%d-%Y", errors="coerce")
+    for c in ("origination_date", "zero_balance_date"):
+        df[c] = pd.to_datetime(df[c], format="%m/%Y", errors="coerce")
     for c in FLOAT_COLS:
         df[c] = pd.to_numeric(df[c], errors="coerce")
     for c in INT_COLS:

@@ -98,7 +98,9 @@ Phase roadmap (proposed, revise as needed):
   (`scripts/ingest_absee.py`, one parquet per filing under `data/parsed/absee/`).
 - **Deferred:** issuer-website adapter for private student loan ABS (144A, no 10-Ds).
 - **Phase 2:** Normalization/QA (cross-checks, restatement handling), storage (parquet/duckdb).
-- **Phase 3:** Analytics — CNL curves vs. vintage, delinquency roll rates, trigger proximity.
+- **Phase 3:** Analytics — delinquency roll rates and vintage CNL curves from the
+  loan-level data (`scripts/analytics.py` -> `data/parsed/analytics/`, definitions in
+  `src/absmon/analytics/*.py` docstrings); trigger proximity still to do.
 - **Phase 4:** Alerts / dashboard.
 
 ## Quickstart

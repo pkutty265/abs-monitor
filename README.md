@@ -56,6 +56,21 @@ cutoff noise between two independently-compiled disclosures (the loan-level serv
 extract and the trust-level investor certificate) rather than a definitional gap worth
 chasing further.
 
+Building the loss curves (Phase 3) surfaced a second CarMax-specific quirk: it re-prints
+chargedoffPrincipalAmount on loans that were already coded charged-off in a prior month
+(~40% of code-4 loans, some revised, some identical), which inflated a naive "amount
+appears" reading of gross losses to 1.41x the 10-D. Dating by a loan's first-ever code
+undercounts, since it drops re-defaults after a reinstatement, which the 10-D does count.
+zeroBalanceEffectiveDate doesn't work either — CarMax back-dates that field on ~20% of
+loans by a month, out of step with when the 10-D actually recognizes them. What
+reconciles: count the amount only when the loan was not already coded in the immediately
+preceding month. On CarMax's July 2026 filing that rule counts 146 first-time defaults
+plus 3 re-defaults — 149 loans, exactly the certificate's line-76 count. The dollar total
+still runs ~4% above the 10-D after that fix; collections, repossession proceeds,
+same-row recoveries, uncollected servicer fees, and principal adjustments were all tested
+against the per-loan amounts and none close the gap, so it's carried as an unexplained
+residual rather than forced to tie.
+
 ## Proposed repo structure
 
 ```

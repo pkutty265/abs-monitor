@@ -33,6 +33,29 @@ guarantor claims paid (claims_paid_period) and the uninsured risk-share remainde
 (net_losses_period / cum_net_losses), which run at roughly 0.5% of original pool after a
 decade.
 
+### Data notes
+
+Validating ABS-EE (EX-102) against the 10-D servicer certificates surfaced a filter bug on
+Ford: an "active loan" can't be defined as just zero_balance_code.isna(). Ford's servicer
+emits bare stub records for loans that already closed out in a prior period — a
+post-closure recovery collection carrying only assetNumber, assetTypeNumber,
+recoveredAmount, and the two period dates, with no zeroBalanceCode and no balance_end at
+all. Those stubs pass the naive filter and get counted as active loans; dollars still tied
+to the penny against the 10-D only because pandas silently skips the missing balance in a
+sum, which is what let a 66-loan count discrepancy hide behind an exact dollar match.
+active_loans() in absmon/edgar/absee.py now also requires balance_end.notna(), which drops
+the stubs and brought Ford's loan count to an exact match; it's a no-op for CarMax and
+Santander, whose active rows already carry a populated balance.
+
+CarMax's validation is left with a small residual: $2,407 on a $463M pool (0.0005%),
+across 16 loans. Five hypotheses were tested against the raw EX-102 tags and none explain
+it — repossession status, repurchase-demand flags, newly-added/substituted loans,
+negative-balance (overpayment/credit) accounts, and final-month loans at zero remaining
+term all failed to reproduce the exact figure. This is treated as ordinary month-end
+cutoff noise between two independently-compiled disclosures (the loan-level servicing
+extract and the trust-level investor certificate) rather than a definitional gap worth
+chasing further.
+
 ## Proposed repo structure
 
 ```

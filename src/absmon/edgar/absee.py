@@ -97,11 +97,29 @@ def parse_ex102(source: Path | str | bytes) -> pd.DataFrame:
     return df
 
 
+def active_loans(df: pd.DataFrame) -> pd.DataFrame:
+    """Loans still in the trust's pool as of this filing's reporting period.
+
+    zero_balance_code.isna() alone is not sufficient: some servicers (confirmed on Ford)
+    emit bare stub records for loans that already closed out in a PRIOR period — a
+    post-closure recovery collection reported with only assetNumber/assetTypeNumber/
+    recoveredAmount/the two period dates, no zeroBalanceCode and no balance_end at all.
+    Those stubs pass zero_balance_code.isna() and get miscounted as active loans (Ford
+    2026-07 had exactly 66 of them, which is exactly the gap that showed up against the
+    10-D servicer certificate's receivable count — dollars still tied to the penny only
+    because pandas skips the NaN balance in a sum). Requiring balance_end.notna() drops
+    them everywhere and is a no-op for servicers (CarMax, Santander) that don't use this
+    convention, since their active rows already have a populated balance.
+    """
+    return df[df["zero_balance_code"].isna() & df["balance_end"].notna()]
+
+
 def ingest_absee_trust(client: EdgarClient, cik: int, trust_slug: str, months: int = 24,
                        out_root: Path = Path("data/parsed/absee")) -> pd.DataFrame:
     """Download and parse every ABS-EE EX-102 for one trust in the window, writing one
     parquet per filing to {out_root}/{trust_slug}/{YYYY-MM}.parquet (actives and closed
-    loans both included; filter on zero_balance_code downstream).
+    loans both included; use active_loans() downstream rather than filtering on
+    zero_balance_code directly — see its docstring for why).
 
     Each raw XML is DELETED from the disk cache once its parquet is written: the XML
     cache would be 15-20GB of iCloud sync traffic, the parquet is the durable artifact,

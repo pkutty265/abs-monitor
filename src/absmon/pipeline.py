@@ -96,6 +96,9 @@ def ingest(trusts: list[Trust], months: int = 24, client: EdgarClient | None = N
     df = df[schema.ALL_COLUMNS]
     for c in ("collection_period_end", "distribution_date"):
         df[c] = pd.to_datetime(df[c], errors="coerce")
+    # Align all trusts on month-end period dates: Ford states the collection period
+    # month-only ("September 2025"), which parses to the 1st.
+    df["collection_period_end"] += pd.offsets.MonthEnd(0)
     for c in schema.METRIC_COLUMNS:
         df[c] = pd.to_numeric(df[c], errors="coerce")
     df = df.sort_values(["trust_name", "report_date"]).reset_index(drop=True)
@@ -113,7 +116,11 @@ def coverage_report(df: pd.DataFrame) -> pd.DataFrame:
 def sanity_checks(df: pd.DataFrame) -> pd.DataFrame:
     """Cheap cross-checks that catch mis-parsed rows (wrong column, unit, or label)."""
     out = df[["trust_name", "accession", "report_date"]].copy()
-    out["pool_declines"] = df["pool_balance_end"] <= df["pool_balance_begin"]
+    # FFELP pools can legitimately grow month-over-month when deferred interest
+    # capitalizes into principal (e.g. deferment/forbearance ending), so allow small
+    # increases — under 0.5% of the pool — for student_ffelp only.
+    grow_tol = df["pool_balance_begin"] * 0.005 * (df["asset_class"] == "student_ffelp")
+    out["pool_declines"] = df["pool_balance_end"] <= df["pool_balance_begin"] + grow_tol
     out["factor_in_range"] = df["pool_factor"].between(0, 1.0001)
     out["cnl_monotone"] = (df.sort_values("report_date").groupby("trust_name")["cum_net_losses"]
                              .diff().fillna(0) >= -1e-6).reindex(df.index)

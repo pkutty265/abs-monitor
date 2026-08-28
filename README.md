@@ -4,6 +4,34 @@ Consumer ABS surveillance pipeline: pull servicer reports from EDGAR (and, later
 issuer websites), normalize key performance fields into a single long-format
 dataset, and build monitoring/analytics on top.
 
+## Decisions & findings
+
+I originally wanted private student loan ABS (SMB Private Education Loan Trust, Navient
+refi) in the universe, but those deals are 144A and file no 10-Ds on EDGAR. The two
+student loan slots are therefore Navient FFELP shelves, which do file; private SL will
+come later via a Sallie Mae investor-site adapter (Phase 1b).
+
+On all five trusts, the untuned label-map parsers produced plausible-but-wrong values
+rather than blanks: line-reference numbers parsed as values (CarMax's "Ln 76" style,
+Santander's "{9}" markers), weighted-average coupons grabbed instead of dollar balances,
+prior-month columns instead of current, and at-issuance figures instead of period ones.
+What caught this was never the coverage table — it was the evidence CSV tracing every
+extracted value to its source line, plus arithmetic identity checks: principal + interest
+= total collections, cumulative loss diffs = period losses, begin balance = prior end
+balance.
+
+delinq_91_plus needs a per-issuer judgment because charge-off timing differs. CarMax and
+Santander charge off at 120 days, so their 121+ buckets are always zero and the 91-120
+bucket stands in for 91+. Ford and Navient carry real balances past 120 days, so their
+91-120 and over-120 rows are summed.
+
+FFELP loss fields are deliberately mapped differently from auto because federal guarantors
+absorb ~98% of defaults. Gross losses and recoveries stay unmapped — the reports don't
+publish them, and post-claim recoveries belong to the guarantor. The meaningful fields are
+guarantor claims paid (claims_paid_period) and the uninsured risk-share remainder
+(net_losses_period / cum_net_losses), which run at roughly 0.5% of original pool after a
+decade.
+
 ## Proposed repo structure
 
 ```
@@ -61,3 +89,5 @@ The first run prints a **parse-coverage report** (which canonical fields matched
 each trust). Expect gaps on the first pass: the label maps in `src/absmon/parsers/*.py`
 are best-effort and must be tuned against the actual exhibit text, which is saved under
 `data/raw/` for exactly this purpose.
+
+Claude Code was used as a pair programmer throughout this project.

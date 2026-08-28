@@ -1,4 +1,7 @@
-data/
+# ignore data/ contents except the committed sample extract
+# (a bare "data/" would ignore the whole dir and negations inside could never apply)
+data/*
+!data/samples/
 __pycache__/
 *.egg-info/
 .env

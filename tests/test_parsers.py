@@ -1,38 +1,10 @@
-"""Unit tests on synthetic exhibit text. Replace fixtures with real saved exhibits after first run."""
+"""Unit tests against real saved exhibits (see tests/fixtures/)."""
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from absmon.parsers.base import parse_number, html_to_lines
 from absmon.parsers.registry import get_parser
-
-SYNTH_HTML = b"""
-<html><body>
-<p>Ford Credit Auto Owner Trust 2024-D Monthly Investor Report</p>
-<p>Collection Period: June 1, 2026 through June 30, 2026</p>
-<p>Distribution Date: July 15, 2026</p>
-<table>
-<tr><td></td><td>Beginning of Period</td><td>End of Period</td></tr>
-<tr><td>Pool Balance</td><td>$812,345,678.90</td><td>$780,123,456.78</td></tr>
-<tr><td>Number of Receivables</td><td>41,201</td><td>39,877</td></tr>
-<tr><td>Pool Factor</td><td>0.6123</td><td>0.5880</td></tr>
-<tr><td>Total Collections</td><td>$35,000,000.12</td></tr>
-<tr><td>Principal Collections</td><td>$31,000,000.00</td></tr>
-<tr><td>Interest Collections</td><td>$4,000,000.12</td></tr>
-<tr><td>Gross Credit Losses</td><td>$1,250,000.00</td></tr>
-<tr><td>Recoveries</td><td>$300,000.00</td></tr>
-<tr><td>Net Credit Losses</td><td>$950,000.00</td></tr>
-<tr><td>Cumulative Net Credit Losses</td><td>$4,100,000.00</td></tr>
-<tr><td>Cumulative Net Credit Loss Ratio</td><td>0.31%</td></tr>
-<tr><td>31-60 Days Delinquent</td><td>$9,000,000.00</td></tr>
-<tr><td>61-90 Days Delinquent</td><td>$3,000,000.00</td></tr>
-<tr><td>91+ Days Delinquent</td><td>$1,000,000.00</td></tr>
-<tr><td>Total Delinquency Ratio</td><td>1.67%</td></tr>
-<tr><td>Reserve Account Balance</td><td>$3,318,000.00</td></tr>
-<tr><td>Total Notes Balance</td><td>$800,000,000.00</td><td>$768,000,000.00</td></tr>
-<tr><td>Servicing Fee</td><td>$677,000.00</td></tr>
-</table></body></html>
-"""
 
 
 def test_parse_number():
@@ -43,22 +15,34 @@ def test_parse_number():
     assert parse_number("-") is None
 
 
-def test_ford_synthetic():
-    lines = html_to_lines(SYNTH_HTML)
-    res = get_parser("ford_auto").parse(lines)
+def test_ford_real_exhibit():
+    """Ford Credit AOT 2024-D, Sept 2025 collection period (accession 0002042453-25-000045)."""
+    raw = (Path(__file__).parent / "fixtures" / "fcaot2024-d10xdinvestorrep.htm").read_bytes()
+    res = get_parser("ford_auto").parse(html_to_lines(raw))
     v = res.values
-    assert v["pool_balance_begin"] == 812345678.90
-    assert v["pool_balance_end"] == 780123456.78
-    assert v["receivables_count_end"] == 39877
-    assert v["pool_factor"] == 0.6123  # NOTE: nth=0 picks beginning; tune per issuer layout
-    assert v["net_losses_period"] == 950000.0
-    assert v["cum_net_losses"] == 4100000.0
-    assert abs(v["cum_net_loss_ratio"] - 0.0031) < 1e-9
-    assert v["delinq_91_plus"] == 1000000.0
-    assert abs(v["delinq_total_ratio"] - 0.0167) < 1e-9
-    assert v["collection_period_end"] == "June 30, 2026"
-    assert v["distribution_date"] == "July 15, 2026"
-    assert v["note_balance_total"] == 768000000.0
+    assert v["pool_balance_begin"] == 1_219_013_447.86
+    assert v["pool_balance_end"] == 1_174_301_836.03
+    assert v["pool_factor"] == 0.6975902  # end of period, matching pool_balance_end
+    assert v["receivables_count_end"] == 34_708  # end column, not beginning 35,403
+    assert v["collections_total"] == 49_106_986.35
+    assert v["collections_principal"] == 44_010_468.31  # principal Sub Total incl. prepays/liquidations
+    assert v["collections_interest"] == 5_096_518.04
+    assert abs(v["collections_principal"] + v["collections_interest"] - v["collections_total"]) < 0.01
+    assert v["gross_losses_period"] == 598_281.53  # dollar column, not the 88 receivable count
+    assert v["recoveries_period"] == 11_114.10
+    assert v["net_losses_period"] == 587_167.43
+    assert abs(v["gross_losses_period"] - v["recoveries_period"] - v["net_losses_period"]) < 0.01
+    assert v["cum_net_losses"] == 4_528_617.94
+    assert abs(v["cum_net_loss_ratio"] - 0.002690) < 1e-9
+    assert v["delinq_31_60"] == 9_623_320.69  # dollar balance, not the 0.82% or the 234 count
+    assert v["delinq_61_90"] == 1_872_640.39
+    assert v["delinq_91_plus"] == 812_566.65  # 91-120 (265,448.13) + Over 120 (547,118.52)
+    assert abs(v["delinq_total_ratio"] - 0.0105) < 1e-9
+    assert v["reserve_account_balance"] == 3_947_368.57  # Ending, not Beginning
+    assert v["note_balance_total"] == 1_078_817_332.23  # end-of-period Total note balance
+    assert v["servicing_fee"] == 1_015_844.54
+    assert v["collection_period_end"] == "September 2025"
+    assert v["distribution_date"] == "10/15/2025"
     assert not res.missing, res.missing
 
 
@@ -94,6 +78,6 @@ def test_carmax_real_exhibit():
 
 if __name__ == "__main__":
     test_parse_number()
-    test_ford_synthetic()
+    test_ford_real_exhibit()
     test_carmax_real_exhibit()
     print("tests passed")
